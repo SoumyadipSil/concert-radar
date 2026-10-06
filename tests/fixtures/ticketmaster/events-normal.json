@@ -1,0 +1,32 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "id": "G5vZ9abc123",
+        "name": "Coldplay: Music of the Spheres",
+        "url": "https://www.ticketmaster.com/event/G5vZ9abc123",
+        "dates": {
+          "start": {
+            "dateTime": "2027-02-14T13:30:00Z",
+            "timezone": "Asia/Kolkata"
+          },
+          "status": { "code": "onsale" }
+        },
+        "_embedded": {
+          "attractions": [{ "id": "K8vZ917GihV", "name": "Coldplay" }],
+          "venues": [
+            {
+              "name": "Netaji Indoor Stadium",
+              "city": { "name": "Kolkata" },
+              "country": { "countryCode": "IN" },
+              "location": { "latitude": "22.5646", "longitude": "88.3426" }
+            }
+          ]
+        },
+        "sales": {
+          "public": { "startDateTime": "2026-10-10T05:30:00Z" }
+        }
+      }
+    ]
+  }
+}

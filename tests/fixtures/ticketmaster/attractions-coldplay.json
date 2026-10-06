@@ -1,0 +1,8 @@
+{
+  "_embedded": {
+    "attractions": [
+      { "id": "K8vZ917GihV", "name": "Coldplay" },
+      { "id": "K8vZ917Other", "name": "Coldplay Tribute" }
+    ]
+  }
+}

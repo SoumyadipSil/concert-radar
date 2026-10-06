@@ -1,0 +1,15 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "id": "G5vZ9cancelled",
+        "name": "Cancelled Coldplay Show",
+        "url": "https://www.ticketmaster.com/event/G5vZ9cancelled",
+        "dates": {
+          "status": { "code": "cancelled" }
+        },
+        "_embedded": { "venues": [] }
+      }
+    ]
+  }
+}

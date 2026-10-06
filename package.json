@@ -11,8 +11,8 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "try:artist": "tsx scripts/try-artist.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "try:artist": "tsx scripts/try-artist.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

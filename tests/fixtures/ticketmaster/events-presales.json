@@ -1,0 +1,22 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "id": "G5vZ9presale",
+        "name": "Coldplay Presale",
+        "url": "https://www.ticketmaster.com/event/G5vZ9presale",
+        "dates": { "start": { "dateTime": "2027-03-01T18:00:00Z" } },
+        "sales": {
+          "presales": [
+            {
+              "name": "Fan Club",
+              "startDateTime": "2026-10-08T10:00:00Z",
+              "endDateTime": "2026-10-09T10:00:00Z"
+            }
+          ]
+        },
+        "_embedded": { "venues": [] }
+      }
+    ]
+  }
+}

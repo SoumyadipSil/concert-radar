@@ -118,6 +118,16 @@ Open [http://localhost:3000](http://localhost:3000).
 npm test
 ```
 
+### Try a Ticketmaster artist
+
+Phase 2 includes a small CLI for checking an artist against the Discovery API. It
+requires `TICKETMASTER_API_KEY` in `.env.local` and only accepts exact normalized
+attraction-name matches, so tribute-band results are not selected.
+
+```bash
+npm run try:artist -- "Coldplay"
+```
+
 ## Environment Variables
 
 | Variable | Where | Description |
