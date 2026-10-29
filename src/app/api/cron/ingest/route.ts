@@ -3,97 +3,154 @@ import { validateCronAuth } from '@/lib/cron-auth';
 import { createTicketmasterProvider } from '@/lib/providers/ticketmaster';
 import { getProvider, registerProvider } from '@/lib/providers/registry';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { INGESTION_BATCH_SIZE } from '@/lib/constants';
+import { INGESTION_BATCH_SIZE, ARTIST_CHECK_COOLDOWN_HOURS } from '@/lib/constants';
 
-export async function GET(request: NextRequest) {
+export const maxDuration = 55;
+
+export async function POST(request: NextRequest) {
   const authError = validateCronAuth(request);
-  if (authError) {
-    return authError;
+  if (authError) return authError;
+
+  const admin = createAdminClient();
+  const provider = getProvider('ticketmaster') ?? (() => {
+    const p = createTicketmasterProvider();
+    registerProvider(p);
+    return p;
+  })();
+
+  const cooldownCutoff = new Date(
+    Date.now() - ARTIST_CHECK_COOLDOWN_HOURS * 60 * 60 * 1000
+  ).toISOString();
+
+  // Get artists followed by at least 1 user, not checked recently
+  // Using a raw query approach: get followed artist IDs, then fetch the artists
+  const { data: followedRows, error: followErr } = await admin
+    .from('followed_artists')
+    .select('artist_id');
+
+  if (followErr) {
+    return NextResponse.json({ error: followErr.message }, { status: 500 });
   }
 
-  try {
-    const admin = createAdminClient();
-    const provider = getProvider('ticketmaster') ?? createTicketmasterProvider();
-    if (!getProvider('ticketmaster')) {
-      registerProvider(provider);
-    }
+  const followedIds = [...new Set((followedRows ?? []).map((r) => r.artist_id))];
+  if (followedIds.length === 0) {
+    return NextResponse.json({ ok: true, artists_checked: 0, events_upserted: 0, errors: [] });
+  }
 
-    const { data: followedArtists, error: followLookupError } = await (admin.from('followed_artists') as any)
-      .select('artist_id, artists!inner(id, name, normalized_name, mbid, last_checked_at)')
-      .order('created_at', { ascending: true })
-      .limit(INGESTION_BATCH_SIZE);
+  const { data: artists, error: artistErr } = await admin
+    .from('artists')
+    .select('id, name, normalized_name, mbid, last_checked_at')
+    .in('id', followedIds)
+    .or(`last_checked_at.is.null,last_checked_at.lt.${cooldownCutoff}`)
+    .limit(INGESTION_BATCH_SIZE);
 
-    if (followLookupError) {
-      throw followLookupError;
-    }
+  if (artistErr) {
+    return NextResponse.json({ error: artistErr.message }, { status: 500 });
+  }
 
-    const uniqueArtists = new Map<string, any>();
-    for (const row of followedArtists ?? []) {
-      const artist = row.artists;
-      if (!artist || uniqueArtists.has(artist.id)) continue;
-      uniqueArtists.set(artist.id, artist);
-    }
+  let eventsUpserted = 0;
+  const errors: Array<{ artist: string; error: string }> = [];
 
-    let processed = 0;
+  for (const artist of artists ?? []) {
+    try {
+      // Check cached provider artist ID
+      const { data: cached } = await admin
+        .from('artist_external_ids')
+        .select('external_id')
+        .eq('artist_id', artist.id)
+        .eq('provider', provider.id)
+        .maybeSingle();
 
-    for (const artist of uniqueArtists.values()) {
-      const providerArtistId = await provider.resolveArtist(artist.name);
-      if (!providerArtistId) continue;
+      let providerArtistId = cached?.external_id ?? null;
 
-      await (admin.from('artist_external_ids') as any).upsert(
-        {
-          artist_id: artist.id,
-          provider: provider.id,
-          external_id: providerArtistId,
-        },
-        { onConflict: 'artist_id,provider' }
-      );
+      if (!cached) {
+        // Not yet resolved — resolve now
+        providerArtistId = await provider.resolveArtist(artist.name, artist.mbid ?? undefined);
 
-      const events = await provider.fetchEventsForArtist(providerArtistId);
-
-      for (const event of events) {
-        await (admin.from('events') as any).upsert(
+        // Cache the result (even null means "looked up, not found")
+        await admin.from('artist_external_ids').upsert(
           {
-            provider: event.provider,
-            external_id: event.externalId,
             artist_id: artist.id,
-            title: event.title,
-            venue_name: event.venueName,
-            city: event.city,
-            country_code: event.countryCode,
-            lat: event.lat,
-            lng: event.lng,
-            starts_at: event.startsAt,
-            timezone: event.timezone,
-            ticket_url: event.ticketUrl ?? '',
-            onsale_at: event.onsaleAt,
-            presales: event.presales ?? [],
-            status: event.status,
-            raw: event.raw ?? {},
+            provider: provider.id,
+            external_id: providerArtistId,
+            resolved_at: new Date().toISOString(),
           },
-          { onConflict: 'provider,external_id' }
+          { onConflict: 'artist_id,provider' }
         );
       }
 
-      await (admin.from('artists') as any)
+      if (providerArtistId) {
+        const events = await provider.fetchEventsForArtist(providerArtistId);
+
+        for (const event of events) {
+          const { error: upsertErr } = await admin.from('events').upsert(
+            {
+              provider: event.provider,
+              external_id: event.externalId,
+              artist_id: artist.id,
+              title: event.title,
+              venue_name: event.venueName,
+              city: event.city,
+              country_code: event.countryCode,
+              lat: event.lat,
+              lng: event.lng,
+              starts_at: event.startsAt,
+              timezone: event.timezone,
+              ticket_url: event.ticketUrl || '',
+              onsale_at: event.onsaleAt,
+              presales: event.presales,
+              status: event.status,
+              raw: event.raw as Record<string, unknown>,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'provider,external_id' }
+          );
+
+          if (!upsertErr) eventsUpserted += 1;
+        }
+      }
+
+      // Mark artist as checked
+      await admin
+        .from('artists')
         .update({ last_checked_at: new Date().toISOString() })
         .eq('id', artist.id);
-
-      processed += 1;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      errors.push({ artist: artist.name, error: message });
     }
+  }
 
-    await (admin.from('provider_health') as any).upsert(
+  // Update provider health
+  if (errors.length === 0) {
+    await admin.from('provider_health').upsert(
       {
         provider: provider.id,
         last_success_at: new Date().toISOString(),
         consecutive_failures: 0,
+        last_error: null,
+        last_error_at: null,
       },
       { onConflict: 'provider' }
     );
-
-    return NextResponse.json({ ok: true, processed, provider: provider.id });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to ingest provider events';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } else {
+    // Partial success: record the last error but also update success time
+    await admin.from('provider_health').upsert(
+      {
+        provider: provider.id,
+        last_success_at: (artists ?? []).length > errors.length ? new Date().toISOString() : undefined,
+        last_error: errors[errors.length - 1].error,
+        last_error_at: new Date().toISOString(),
+        consecutive_failures: errors.length,
+      },
+      { onConflict: 'provider' }
+    );
   }
+
+  return NextResponse.json({
+    ok: true,
+    artists_checked: (artists ?? []).length,
+    events_upserted: eventsUpserted,
+    errors,
+  });
 }
