@@ -59,6 +59,7 @@ export interface Database {
           notify_email?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       artists: {
         Row: {
@@ -85,6 +86,7 @@ export interface Database {
           last_checked_at?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       artist_external_ids: {
         Row: {
@@ -105,6 +107,7 @@ export interface Database {
           external_id?: string | null;
           resolved_at?: string;
         };
+        Relationships: [];
       };
       followed_artists: {
         Row: {
@@ -128,6 +131,7 @@ export interface Database {
           playcount?: number | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       events: {
         Row: {
@@ -193,6 +197,7 @@ export interface Database {
           first_seen_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       notifications: {
         Row: {
@@ -225,6 +230,7 @@ export interface Database {
           error?: string | null;
           sent_at?: string;
         };
+        Relationships: [];
       };
       provider_health: {
         Row: {
@@ -248,6 +254,7 @@ export interface Database {
           last_error_at?: string | null;
           consecutive_failures?: number;
         };
+        Relationships: [];
       };
       telegram_link_tokens: {
         Row: {
@@ -265,6 +272,7 @@ export interface Database {
           user_id?: string;
           expires_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

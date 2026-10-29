@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { geocodeLocation } from '@/lib/geocode';
+import type { Database } from '@/lib/supabase/types';
 
 const profileSchema = z.object({
   country_code: z.string().length(2).optional(),
@@ -28,7 +29,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const profileUpdate: Record<string, unknown> = { id: user.id };
+    const profileUpdate: Database['public']['Tables']['profiles']['Insert'] = { id: user.id };
 
     if (body.country_code !== undefined) profileUpdate.country_code = body.country_code.toUpperCase();
     if (body.radius_km !== undefined) profileUpdate.radius_km = body.radius_km;

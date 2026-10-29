@@ -15,7 +15,7 @@
  *   "  DJ  Shadow "         → "shadow"
  */
 export function normalizeArtistName(name: string): string {
-  let normalized = name
+  const normalized = name
     // Step 1: lowercase
     .toLowerCase()
     // Step 2: decompose and strip diacritics

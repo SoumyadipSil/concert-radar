@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchLastFmTopArtists } from '@/lib/lastfm';
-import { normalizeArtistName } from '@/lib/normalize';
 
 const importSchema = z.object({
   username: z.string().min(1),

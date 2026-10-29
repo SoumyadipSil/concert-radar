@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
               timezone: event.timezone,
               ticket_url: event.ticketUrl || '',
               onsale_at: event.onsaleAt,
-              presales: event.presales,
+              presales: event.presales as unknown as import('@/lib/supabase/types').Json,
               status: event.status,
-              raw: event.raw as Record<string, unknown>,
+              raw: event.raw as unknown as import('@/lib/supabase/types').Json,
               updated_at: new Date().toISOString(),
             },
             { onConflict: 'provider,external_id' }

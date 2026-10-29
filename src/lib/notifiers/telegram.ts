@@ -48,9 +48,10 @@ export class TelegramNotifier implements Notifier {
 
     const lines: string[] = [
       `🎤 <b>${artist}</b>`,
+      title && title !== artist ? `🎶 ${title}` : '',
       `📍 ${venue}${city ? `, ${city}` : ''}`,
       `📅 ${date}`,
-    ];
+    ].filter(Boolean);
 
     if (payload.event.onsale_at) {
       const onsale = escapeHtml(formatDate(payload.event.onsale_at, payload.timeZoneForUser));

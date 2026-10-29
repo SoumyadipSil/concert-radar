@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
     }
 
     const results: ArtistSearchResult[] = [];
-    const normalizedQuery = normalizeArtistName(parsed.data.q);
 
     // Search local DB first (ilike on name for partial matches)
     const { data: localArtists } = await supabase
